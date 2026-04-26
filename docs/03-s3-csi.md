@@ -4,6 +4,18 @@
 
 Смонтировать S3-совместимое хранилище в Pod `message-service` как файловую систему по пути `/app/uploads`.
 
+## Важно: шаблоны неполные
+
+Во всех YAML ниже есть поля, которые нужно заполнить вручную:
+
+- `<team-namespace>`
+- `<bucket-name>`
+- `<s3-endpoint>`
+- `<access-key>` / `<secret-key>`
+- `TODO_*`
+
+Применение без этих правок не засчитывается.
+
 ## Варианты хранилища
 
 - Локально: `MinIO` в этом же кластере
@@ -18,7 +30,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -52,7 +64,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: minio
@@ -72,11 +84,11 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: csi-s3-secret
-  namespace: messager
+  namespace: <team-namespace>
 type: Opaque
 stringData:
-  accessKeyID: "minioadmin"
-  secretAccessKey: "minioadmin"
+  accessKeyID: "<access-key>"
+  secretAccessKey: "<secret-key>"
 ```
 
 ### 3) PV/PVC для S3 CSI
@@ -85,7 +97,7 @@ stringData:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: s3-pv-messager-uploads
+  name: s3-pv-<team>-uploads
 spec:
   capacity:
     storage: 10Gi
@@ -94,34 +106,34 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   mountOptions:
     - allow-delete
-    - region=us-east-1
-    - url=http://minio.messager.svc.cluster.local:9000
+    - region=<region>
+    - url=<s3-endpoint>
     - use_path_request_style
   csi:
     driver: ch.ctrox.csi.s3-driver
-    volumeHandle: messager-uploads-handle
+    volumeHandle: <unique-volume-handle>
     nodePublishSecretRef:
       name: csi-s3-secret
-      namespace: messager
+      namespace: <team-namespace>
     volumeAttributes:
-      bucketName: messager-uploads
+      bucketName: <bucket-name>
       mounter: rclone
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: message-uploads-pvc
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 10Gi
-  volumeName: s3-pv-messager-uploads
+  volumeName: s3-pv-<team>-uploads
 ```
 
-> Перед тестом создайте bucket `messager-uploads` в MinIO.
+> Перед тестом создайте bucket `<bucket-name>` в выбранном S3.
 
 ### 4) Подключите PVC в `message-service`
 

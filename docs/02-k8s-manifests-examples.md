@@ -1,6 +1,22 @@
 # Примеры Kubernetes-манифестов
 
-Этот документ содержит эталонные шаблоны. Адаптируйте их под свой кластер и структуру `kustomize`.
+Этот документ содержит учебные шаблоны с намеренно незаполненными полями. Их нельзя просто применить в кластер без ручной доработки.
+
+## Важно: обязательные ручные правки
+
+Перед запуском вы обязаны заменить все значения вида:
+
+- `<...>`
+- `TODO_*`
+- `CHANGEME`
+
+Минимальный набор правок:
+
+1. namespace, hostnames и имена ресурсов под вашу работу;
+2. секреты и DSN (без дефолтных значений из примеров);
+3. теги образов (не `latest` для `prod`);
+4. storage class/размера томов под ваш кластер;
+5. probes/resources/affinity в соответствии с заданием.
 
 ## 1. Namespace
 
@@ -8,7 +24,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: messager
+  name: <team-namespace>
 ```
 
 ## 2. ConfigMap и Secret
@@ -20,9 +36,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: messager-config
-  namespace: messager
+  namespace: <team-namespace>
 data:
-  FRONTEND_BFF_URL: ""
+  FRONTEND_BFF_URL: "TODO_PUBLIC_BFF_URL_OR_EMPTY"
   FRONTEND_BFF_INTERNAL_URL: "http://bff:8080"
   BFF_HTTP_PORT: "8080"
   USER_HTTP_PORT: "8081"
@@ -30,7 +46,7 @@ data:
   USER_SERVICE_URL: "http://user-service:8081"
   MSG_SERVICE_URL: "http://message-service:8082"
   MSG_UPLOADS_DIR: "/app/uploads"
-  POSTGRES_DB: "messager"
+  POSTGRES_DB: "TODO_POSTGRES_BOOTSTRAP_DB"
   POSTGRES_HOST: "postgres"
   POSTGRES_PORT: "5432"
 ```
@@ -42,13 +58,13 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: messager-db-secret
-  namespace: messager
+  namespace: <team-namespace>
 type: Opaque
 stringData:
-  POSTGRES_USER: "messager"
-  POSTGRES_PASSWORD: "messager"
-  USER_DB_DSN: "host=postgres user=messager password=messager dbname=messager_users sslmode=disable"
-  MSG_DB_DSN: "host=postgres user=messager password=messager dbname=messager_messages sslmode=disable"
+  POSTGRES_USER: "CHANGEME_DB_USER"
+  POSTGRES_PASSWORD: "CHANGEME_DB_PASSWORD"
+  USER_DB_DSN: "host=postgres user=CHANGEME_DB_USER password=CHANGEME_DB_PASSWORD dbname=<users_db_name> sslmode=disable"
+  MSG_DB_DSN: "host=postgres user=CHANGEME_DB_USER password=CHANGEME_DB_PASSWORD dbname=<messages_db_name> sslmode=disable"
 ```
 
 ## 3. Postgres
@@ -60,12 +76,13 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   accessModes: ["ReadWriteOnce"]
+  storageClassName: <your-storage-class>
   resources:
     requests:
-      storage: 5Gi
+      storage: <size-like-5Gi>
 ```
 
 ### Deployment
@@ -75,7 +92,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -115,6 +132,13 @@ spec:
               command: ["sh", "-c", "pg_isready -U $POSTGRES_USER"]
             initialDelaySeconds: 10
             periodSeconds: 5
+          resources:
+            requests:
+              cpu: "TODO_CPU_REQUEST"
+              memory: "TODO_MEMORY_REQUEST"
+            limits:
+              cpu: "TODO_CPU_LIMIT"
+              memory: "TODO_MEMORY_LIMIT"
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
@@ -128,7 +152,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: postgres
@@ -147,7 +171,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: migrate-users
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   backoffLimit: 3
   template:
@@ -160,7 +184,7 @@ spec:
             - name: GOOSE_DRIVER
               value: postgres
             - name: GOOSE_DBSTRING
-              value: "host=postgres user=messager password=messager dbname=messager_users sslmode=disable"
+              value: "host=postgres user=<db_user> password=<db_password> dbname=<users_db_name> sslmode=disable"
             - name: GOOSE_MIGRATION_DIR
               value: /migrations
           volumeMounts:
@@ -179,7 +203,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: migrate-messages
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   backoffLimit: 3
   template:
@@ -192,7 +216,7 @@ spec:
             - name: GOOSE_DRIVER
               value: postgres
             - name: GOOSE_DBSTRING
-              value: "host=postgres user=messager password=messager dbname=messager_messages sslmode=disable"
+              value: "host=postgres user=<db_user> password=<db_password> dbname=<messages_db_name> sslmode=disable"
             - name: GOOSE_MIGRATION_DIR
               value: /migrations
           volumeMounts:
@@ -213,7 +237,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -226,7 +250,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: mablinov2704/user-service:latest
+          image: mablinov2704/user-service:<tag-for-env>
           ports:
             - containerPort: 8081
           env:
@@ -245,7 +269,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: user-service
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: user-service
@@ -262,7 +286,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: message-service
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -275,7 +299,7 @@ spec:
     spec:
       containers:
         - name: message-service
-          image: mablinov2704/message-service:latest
+          image: mablinov2704/message-service:<tag-for-env>
           ports:
             - containerPort: 8082
           env:
@@ -306,7 +330,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: message-service
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: message-service
@@ -323,7 +347,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bff
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -336,7 +360,7 @@ spec:
     spec:
       containers:
         - name: bff
-          image: mablinov2704/bff:latest
+          image: mablinov2704/bff:<tag-for-env>
           ports:
             - containerPort: 8080
           env:
@@ -360,7 +384,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: bff
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: bff
@@ -377,7 +401,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   replicas: 1
   selector:
@@ -390,7 +414,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: mablinov2704/frontend:latest
+          image: mablinov2704/frontend:<tag-for-env>
           ports:
             - containerPort: 80
           env:
@@ -409,7 +433,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: frontend
-  namespace: messager
+  namespace: <team-namespace>
 spec:
   selector:
     app: frontend
@@ -421,12 +445,12 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: messager-ingress
-  namespace: messager
+  name: <team-ingress-name>
+  namespace: <team-namespace>
 spec:
-  ingressClassName: nginx
+  ingressClassName: <your-ingress-class>
   rules:
-    - host: messager.local
+    - host: <your-hostname>
       http:
         paths:
           - path: /
@@ -445,7 +469,7 @@ spec:
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: messager
+namespace: <team-namespace>
 resources:
   - namespace.yaml
   - configmap.yaml

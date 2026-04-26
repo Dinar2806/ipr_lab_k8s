@@ -4,6 +4,16 @@
 
 Настроить GitOps-деплой так, чтобы изменения в GitHub-репозитории автоматически применялись в кластере.
 
+## Важно: не копировать как есть
+
+Примеры ниже содержат плейсхолдеры. Перед применением обязательно замените:
+
+- `<your-org>`
+- `<your-repo>`
+- `<your-branch>`
+- `<target-namespace>`
+- `<argocd-project>`
+
 ## Что требуется
 
 1. Установить Argo CD в кластер.
@@ -21,14 +31,14 @@ metadata:
   name: messager-dev
   namespace: argocd
 spec:
-  project: default
+  project: <argocd-project>
   source:
     repoURL: https://github.com/<your-org>/<your-repo>.git
-    targetRevision: main
+    targetRevision: <your-branch>
     path: k8s/overlays/dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: messager
+    namespace: <target-namespace>
   syncPolicy:
     automated:
       prune: true
@@ -46,14 +56,14 @@ metadata:
   name: messager-prod
   namespace: argocd
 spec:
-  project: default
+  project: <argocd-project>
   source:
     repoURL: https://github.com/<your-org>/<your-repo>.git
-    targetRevision: main
+    targetRevision: <your-branch>
     path: k8s/overlays/prod
   destination:
     server: https://kubernetes.default.svc
-    namespace: messager-prod
+    namespace: <target-namespace>-prod
   syncPolicy:
     automated:
       prune: true
