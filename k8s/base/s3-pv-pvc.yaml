@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: s3-uploads-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""   # добавить эту строку
+  mountOptions:
+    - allow-delete
+    - url=http://minio.messager.svc.cluster.local:9000
+    - use_path_request_style
+  csi:
+    driver: ch.ctrox.csi.s3-driver
+    volumeHandle: "messager-uploads-bucket"
+    nodePublishSecretRef:
+      name: csi-s3-secret
+      namespace: messager
+    volumeAttributes:
+      bucketName: "messager-uploads"
+      mounter: "rclone"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: message-uploads-pvc
+  namespace: messager
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ""   # добавить эту строку
+  volumeName: s3-uploads-pv

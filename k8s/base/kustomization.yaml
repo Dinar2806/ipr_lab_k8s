@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: messager
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - postgres-init-sql-cm.yaml
+  - postgres-pvc.yaml
+  - postgres.yaml
+  - user-migrations-cm.yaml
+  - messages-migrations-cm.yaml
+  - migrate-users-job.yaml
+  - migrate-messages-job.yaml
+  - user-service.yaml
+  - message-service.yaml
+  - bff.yaml
+  - frontend.yaml
+  - minio.yaml
+  - csi-s3-secret.yaml
+  - s3-pv-pvc.yaml
+  - minio-create-bucket-job.yaml

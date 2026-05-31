@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-create-bucket
+  namespace: messager
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set myminio http://minio:9000 minioadmin minioadmin123
+              mc mb myminio/messager-uploads --ignore-existing
+              mc policy set download myminio/messager-uploads
+          env:
+            - name: MC_HOST_myminio
+              value: "http://minioadmin:minioadmin123@minio:9000"
