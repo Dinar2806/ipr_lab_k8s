@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: messager-prod
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests
+        value: {cpu: "200m", memory: "256Mi"}
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits
+        value: {cpu: "500m", memory: "512Mi"}
+
+images:
+  - name: mablinov2704/bff
+    newTag: stable
+  - name: mablinov2704/frontend
+    newTag: stable
+  - name: mablinov2704/user-service
+    newTag: stable
+  - name: mablinov2704/message-service
+    newTag: stable
